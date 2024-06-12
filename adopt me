@@ -1,36 +1,91 @@
--- Create GUI for Adopt Me pet trade removal
-local gui = Instance.new("ScreenGui")
-gui.Parent = game.Players.LocalPlayer.PlayerGui
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/OrionHub/OrionHub/main/OrionHub.lua"))()
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 150)
-frame.Position = UDim2.new(0.5, -100, 0.5, -75)
-frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-frame.Parent = gui
+local AdoptMe = game:GetService("AdoptMe")
 
-local title = Instance.new("TextLabel")
-title.Text = "Select pets to remove:"
-title.TextSize = 20
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Parent = frame
+local gui = Orion:MakeTheme("Pet Trader")
+gui:MakeTab("Main")
+gui:MakeSection("Main", "Main")
 
-local pet1Button = Instance.new("TextButton")
-pet1Button.Text = "Pet 1"
-pet1Button.Size = UDim2.new(0, 100, 0, 30)
-pet1Button.Position = UDim2.new(0.5, -50, 0.3, -15)
-pet1Button.Parent = frame
-pet1Button.MouseButton1Click:Connect(function()
-    -- Code to remove Pet 1 from the trade
+local function getPetList()
+    local pets = {}
+    for _, pet in pairs(AdoptMe.Pets:GetDescendants()) do
+        if pet:IsA("Model") and pet.Name:match("Pet") then
+            table.insert(pets, pet.Name)
+        end
+    end
+    return pets
+end
+
+local function getPetOwner(petName)
+    for _, pet in pairs(AdoptMe.Pets:GetDescendants()) do
+        if pet:IsA("Model") and pet.Name == petName then
+            return pet.Owner
+        end
+    end
+    return nil
+end
+
+local function removePetFromOwner(petName, newOwner)
+    local pet = AdoptMe.Pets:GetDescendantByName(petName)
+    if pet then
+        pet.Owner = newOwner
+        pet:Destroy()
+    end
+end
+
+local function onTrade(player)
+    local playerGui = gui:CreateElement("Frame", "Frame")
+    playerGui:Dock(Enu.Dock.LEFT)
+    playerGui:Size(200, 200)
+
+    local label = playerGui:CreateElement("TextLabel", "TextLabel")
+    label:Text("Select Pet to Trade:")
+    label:Size(200, 20)
+
+    local dropdown = playerGui:CreateElement("Dropdown", "Dropdown")
+    dropdown:Items(getPetList())
+    dropdown:Size(200, 100)
+
+    local function onDropChanged()
+        local selectedPet = dropdown:GetValue()
+        local owner = getPetOwner(selectedPet)
+        if owner then
+            local message = "Are you sure you want to trade " .. selectedPet .. " with " .. owner.Name .. "?"
+            local confirm = playerGui:CreateElement("Confirm", "Confirm")
+            confirm:Text(message)
+            confirm:Size(200, 20)
+            confirm.Button.Text = "Confirm"
+            confirm.Button.MouseClick:Connect(function()
+                removePetFromOwner(selectedPet, player)
+                wait(0.1)
+                playerGui:Remove()
+            end)
+        end
+    end
+
+    dropdown.SelectedIndexChanged:Connect(onDropChanged)
+
+    local button = playerGui:CreateElement("Button", "Button")
+    button:SetText("Start Trade")
+    button.Size = UDim2.new(0, 200, 0, 20)
+    button.MouseClick:Connect(function()
+        playerGui:Remove()
+        wait(0.1)
+        gui.MainMenu.SetActive(true)
+    end)
+end
+
+gui.MainMenu.Button.MouseClick:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Player then
+            onTrade(player)
+        end
+    end
 end)
 
-local pet2Button = Instance.new("TextButton")
-pet2Button.Text = "Pet 2"
-pet2Button.Size = UDim2.new(0, 100, 0, 30)
-pet2Button.Position = UDim2.new(0.5, -50, 0.6, -15)
-pet2Button.Parent = frame
-pet2Button.MouseButton1Click:Connect(function()
-    -- Code to remove Pet 2 from the trade
-end)
+gui.MainMenu.Button.Text = "Start Trade"
+gui.MainMenu.Button.Size = UDim2.new(0, 200, 0, 20)
 
--- Add more buttons for additional pets as needed
-
+gui.MainMenu:SetActive(true)
