@@ -1,91 +1,53 @@
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/OrionHub/OrionHub/main/OrionHub.lua"))()
+local LocalPlayer = Players.LocalPlayer
+local AdoptMe = require(920587237) -- Replace with the actual AdoptMe module ID
 
-local AdoptMe = game:GetService("AdoptMe")
+local gui = Instance.new("ScreenGui")
+gui.Name = "PetRemover"
+gui.Parent = game.Players.LocalPlayer.PlayerGui
 
-local gui = Orion:MakeTheme("Pet Trader")
-gui:MakeTab("Main")
-gui:MakeSection("Main", "Main")
-
-local function getPetList()
-    local pets = {}
-    for _, pet in pairs(AdoptMe.Pets:GetDescendants()) do
-        if pet:IsA("Model") and pet.Name:match("Pet") then
-            table.insert(pets, pet.Name)
+local function removePets(player, pets)
+    for _, pet in pairs(pets) do
+        local petInstance = AdoptMe:FindInstance(pet)
+        if petInstance then
+            petInstance:Destroy()
         end
-    end
-    return pets
-end
-
-local function getPetOwner(petName)
-    for _, pet in pairs(AdoptMe.Pets:GetDescendants()) do
-        if pet:IsA("Model") and pet.Name == petName then
-            return pet.Owner
-        end
-    end
-    return nil
-end
-
-local function removePetFromOwner(petName, newOwner)
-    local pet = AdoptMe.Pets:GetDescendantByName(petName)
-    if pet then
-        pet.Owner = newOwner
-        pet:Destroy()
     end
 end
 
-local function onTrade(player)
-    local playerGui = gui:CreateElement("Frame", "Frame")
-    playerGui:Dock(Enu.Dock.LEFT)
-    playerGui:Size(200, 200)
-
-    local label = playerGui:CreateElement("TextLabel", "TextLabel")
-    label:Text("Select Pet to Trade:")
-    label:Size(200, 20)
-
-    local dropdown = playerGui:CreateElement("Dropdown", "Dropdown")
-    dropdown:Items(getPetList())
-    dropdown:Size(200, 100)
-
-    local function onDropChanged()
-        local selectedPet = dropdown:GetValue()
-        local owner = getPetOwner(selectedPet)
-        if owner then
-            local message = "Are you sure you want to trade " .. selectedPet .. " with " .. owner.Name .. "?"
-            local confirm = playerGui:CreateElement("Confirm", "Confirm")
-            confirm:Text(message)
-            confirm:Size(200, 20)
-            confirm.Button.Text = "Confirm"
-            confirm.Button.MouseClick:Connect(function()
-                removePetFromOwner(selectedPet, player)
-                wait(0.1)
-                playerGui:Remove()
-            end)
-        end
+local function tradePets(trade)
+    local myPets = {}
+    for _, pet in pairs(AdoptMe:FindAllPets()) do
+        table.insert(myPets, pet)
     end
 
-    dropdown.SelectedIndexChanged:Connect(onDropChanged)
+    local otherPlayer = game.Players:FindFirstChild(trade.OtherPlayer)
+    if otherPlayer then
+        local otherPlayerPets = {}
+        for _, pet in pairs(AdoptMe:FindAllPets(otherPlayer)) do
+            table.insert(otherPlayerPets, pet)
+        end
 
-    local button = playerGui:CreateElement("Button", "Button")
-    button:SetText("Start Trade")
-    button.Size = UDim2.new(0, 200, 0, 20)
-    button.MouseClick:Connect(function()
-        playerGui:Remove()
-        wait(0.1)
-        gui.MainMenu.SetActive(true)
-    end)
+        removePets(otherPlayer, otherPlayerPets)
+    end
+
+    removePets(LocalPlayer, myPets)
 end
 
-gui.MainMenu.Button.MouseClick:Connect(function()
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Player then
-            onTrade(player)
-        end
-    end
+local tradeButton = Instance.new("TextButton")
+tradeButton.Name = "TradeButton"
+tradeButton.Text = "Trade"
+tradeButton.Parent = gui
+
+tradeButton.ClickDetector.MouseClick:Connect(function()
+    local trade = AdoptMe:CreateTrade()
+    trade.Trade = "Trade"
+    trade.OtherPlayer = "OtherPlayer" -- Replace with the player's name or username
+    tradeButton:Destroy()
+    tradeButton.ClickDetector.MouseClick:Disconnect()
+    task.wait(1) -- Wait for the trade to be accepted
+    trade:Accept()
+    task.wait(1) -- Wait for the trade to be processed
 end)
 
-gui.MainMenu.Button.Text = "Start Trade"
-gui.MainMenu.Button.Size = UDim2.new(0, 200, 0, 20)
-
-gui.MainMenu:SetActive(true)
+gui.Movable = true -- Make the GUI movable
